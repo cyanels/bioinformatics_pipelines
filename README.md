@@ -1,6 +1,6 @@
 16s-amplicon analysis
 
-Dataset used: Soil samples from Atacama Desert, Northern Chile (1)
+Dataset used: Subset of soil samples from Atacama Desert, Northern Chile (1) 
 
 
 References:
