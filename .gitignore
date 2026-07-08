@@ -1,0 +1,18 @@
+# Nextflow
+.nextflow/
+.nextflow.log*
+work/
+results/
+
+# QIIME2 artifacts (large, regenerable outputs — not source)
+*.qza
+*.qzv
+
+# Raw sequencing data
+*.fastq
+*.fastq.gz
+*.fq.gz
+
+# OS/editor cruft
+.DS_Store
+*.swp
