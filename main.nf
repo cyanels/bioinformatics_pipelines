@@ -18,6 +18,7 @@ process IMPORT_RAW {
 }
 
 process DEMUX {
+    publishDir "${params.outdir}/demux", mode: 'copy'
 
     input:
     path emp_paired_end_sequences
@@ -36,6 +37,23 @@ process DEMUX {
         --i-seqs ${emp_paired_end_sequences} \
         --o-per-sample-sequences demux-full.qza \
         --o-error-correction-details demux-details.qza
+    """
+}
+
+process DEMUX_SUMMARIZE {
+    publishDir "${params.outdir}/demux", mode: 'copy'
+
+    input:
+    path demux_seqs
+
+    output:
+    path "demux.qzv"
+
+    script:
+    """
+    qiime demux summarize \
+        --i-data ${demux_seqs} \
+        --o-visualization demux.qzv
     """
 }
 
@@ -67,6 +85,15 @@ process DADA2_DENOISE {
 }
 
 workflow {
+    if (params.stage == 'demux_only') {
+        demux_only()
+    } else {
+        full()
+    }
+}
+
+ // run this workflow first to obtain demultiplexed data and determine parameters for denoising (input into .config)
+workflow demux_only{
     raw_seq_dir = Channel.fromPath(params.raw_seq_dir, checkIfExists: true)
     IMPORT_RAW(raw_seq_dir)
     IMPORT_RAW.out.view()
@@ -74,10 +101,24 @@ workflow {
     DEMUX(IMPORT_RAW.out, sample_metadata)
     DEMUX.out.seqs.view()
     DEMUX.out.details.view()
-    DADA2_DENOISE(DEMUX.out.seqs)
+    DEMUX_SUMMARIZE(DEMUX.out.seqs)
+    }
+
+
+workflow full{
+    if (params.demux_seqs) {
+        demux_seqs = Channel.fromPath(params.demux_seqs, checkIfExists: true)
+    } else {
+        raw_seq_dir = Channel.fromPath(params.raw_seq_dir, checkIfExists: true)
+        IMPORT_RAW(raw_seq_dir)
+        sample_metadata = Channel.fromPath(params.sample_metadata, checkIfExists: true)
+        DEMUX(IMPORT_RAW.out, sample_metadata)
+        demux_seqs = DEMUX.out.seqs
+    }
+    DEMUX_SUMMARIZE(demux_seqs)
+    DADA2_DENOISE(demux_seqs)
     DADA2_DENOISE.out.table.view()
     DADA2_DENOISE.out.rep_seqs.view()
     DADA2_DENOISE.out.stats.view()
     DADA2_DENOISE.out.base_transition.view()
-    
 }
